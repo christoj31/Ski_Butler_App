@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ReservationProvider } from './context/ReservationContext'
 import { PackingProvider } from './context/PackingContext'
@@ -24,7 +24,7 @@ export default function App() {
     <AuthProvider>
       <ReservationProvider initialReservations={ALL_RESERVATIONS}>
         <PackingProvider initialPackItems={MOCK_PACK_ITEMS}>
-          <BrowserRouter basename="/Ski_Butler_App/">
+          <HashRouter>
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<LoginPage />} />
@@ -38,7 +38,7 @@ export default function App() {
               <Route path="/tuning" element={<TuningPage />} />
               <Route path="/manager" element={<ManagerViewPage />} />
             </Routes>
-          </BrowserRouter>
+          </HashRouter>
         </PackingProvider>
       </ReservationProvider>
     </AuthProvider>
