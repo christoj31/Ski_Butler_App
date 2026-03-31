@@ -80,6 +80,12 @@ export default function RenterCard({ renter, onUpdate }) {
             </div>
           </div>
 
+          {/* Calculated boot size */}
+          <div style={styles.bootSizeRow}>
+            <span style={styles.bootSizeLabel}>Boot Size (Mondo)</span>
+            <span style={styles.bootSizeValue}>{bootSizes[0]}</span>
+          </div>
+
           {/* Boot selector */}
           <BootSelector
             bootSizes={bootSizes}
@@ -256,6 +262,27 @@ const styles = {
     fontSize: '16px',
     fontWeight: '700',
     color: '#fff',
+  },
+  bootSizeRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#2e3448',
+    borderRadius: '8px',
+    padding: '10px 14px',
+    marginBottom: '4px',
+  },
+  bootSizeLabel: {
+    fontSize: '13px',
+    color: '#9aa0b4',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  bootSizeValue: {
+    fontSize: '20px',
+    fontWeight: '800',
+    color: '#FFD700',
   },
   signedBanner: {
     marginTop: '12px',

@@ -5,6 +5,7 @@ const NAV_ITEMS = [
   { label: 'Search', icon: '🔍', path: '/search', testId: 'nav-search' },
   { label: 'Packing', icon: '📦', path: '/packing', testId: 'nav-packing' },
   { label: 'New', icon: '➕', path: '/new', testId: 'nav-new' },
+  { label: 'Tuning', icon: '🎿', path: '/tuning', testId: 'nav-tuning' },
 ]
 
 export default function BottomNav() {

@@ -14,6 +14,7 @@ import CreateReservationPage from './pages/CreateReservationPage'
 import DeliveryDetailPage from './pages/DeliveryDetailPage'
 import PayBillPage from './pages/PayBillPage'
 import PickupDetailPage from './pages/PickupDetailPage'
+import TuningPage from './pages/TuningPage'
 
 const ALL_RESERVATIONS = [...MOCK_ROUTES, ...MOCK_RESERVATIONS]
 
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="/delivery/:reservationId" element={<DeliveryDetailPage />} />
               <Route path="/delivery/:reservationId/pay" element={<PayBillPage />} />
               <Route path="/pickup/:reservationId" element={<PickupDetailPage />} />
+              <Route path="/tuning" element={<TuningPage />} />
             </Routes>
           </BrowserRouter>
         </PackingProvider>

@@ -12,9 +12,9 @@ export function shoeToMondo(usShoeSizeUS, gender = 'neutral') {
 
   const mondo = usMens * 0.667 + 15.33
 
-  // Round to nearest 0.5
-  const rounded = Math.round(mondo * 2) / 2
-  const secondary = rounded + 0.5
+  // Ski boots always come in .5 sizes (25.5, 26.5, 27.5, etc.)
+  const rounded = Math.floor(mondo) + 0.5
+  const secondary = rounded + 1.0
 
   return [rounded, secondary]
 }
