@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { label: 'Packing', icon: '📦', path: '/packing', testId: 'nav-packing' },
   { label: 'New', icon: '➕', path: '/new', testId: 'nav-new' },
   { label: 'Tuning', icon: '🎿', path: '/tuning', testId: 'nav-tuning' },
+  { label: 'Manager', icon: '📊', path: '/manager', testId: 'nav-manager' },
 ]
 
 export default function BottomNav() {

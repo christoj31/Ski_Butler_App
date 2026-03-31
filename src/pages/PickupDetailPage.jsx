@@ -1,11 +1,37 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useReservations } from '../context/ReservationContext'
 import BottomNav from '../components/common/BottomNav'
+
+const SKI_MODELS = {
+  'basic-ski': 'Rossignol Experience 76',
+  'signature-ski': 'Rossignol Experience 78 CA',
+  'performance-ski': 'Head Supershape i.Speed',
+  'basic-snowboard': 'Burton Clash',
+  'signature-snowboard': 'Burton Custom Flying V',
+}
+
+function getRentersForCategory(renters, category) {
+  switch (category) {
+    case 'ski':
+    case 'snowboard':
+      return renters.filter(r => r.packageId?.includes(category) || (!category.includes('snowboard') && !r.packageId?.includes('snowboard')))
+    case 'boot':
+      return renters
+    case 'pole':
+      return renters.filter(r => !r.packageId?.includes('snowboard'))
+    case 'helmet':
+      return renters.filter(r => (r.addOns || []).some(a => a.addOnId === 'helmet'))
+    default:
+      return renters
+  }
+}
 
 export default function PickupDetailPage() {
   const { reservationId } = useParams()
   const { getReservationById, updateReservation } = useReservations()
   const navigate = useNavigate()
+  const [expandedItem, setExpandedItem] = useState(null)
 
   const reservation = getReservationById(reservationId)
 
@@ -73,33 +99,87 @@ export default function PickupDetailPage() {
       {/* Checklist */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>Equipment Checklist</h3>
-        {(reservation.checklistItems || []).map(item => (
-          <button
-            key={item.itemId}
-            onClick={() => toggleChecklistItem(item.itemId)}
-            data-testid={`checklist-item-${item.itemId}`}
-            data-checked={item.checked}
-            style={{
-              ...styles.checklistItem,
-              backgroundColor: item.checked ? 'rgba(34,197,94,0.1)' : '#242938',
-              borderColor: item.checked ? '#22c55e' : '#3a4055',
-            }}
-          >
-            <span style={{
-              ...styles.checkbox,
-              color: item.checked ? '#22c55e' : '#9aa0b4',
-            }}>
-              {item.checked ? '✅' : '⬜'}
-            </span>
-            <span style={{
-              ...styles.itemLabel,
-              color: item.checked ? '#22c55e' : '#fff',
-              textDecoration: item.checked ? 'line-through' : 'none',
-            }}>
-              {item.label}
-            </span>
-          </button>
-        ))}
+        {(reservation.checklistItems || []).map(item => {
+          const isExpanded = expandedItem === item.itemId
+          const relatedRenters = getRentersForCategory(reservation.renters || [], item.category)
+          return (
+            <div
+              key={item.itemId}
+              style={{
+                ...styles.checklistCard,
+                backgroundColor: item.checked ? 'rgba(34,197,94,0.1)' : '#242938',
+                borderColor: item.checked ? '#22c55e' : '#3a4055',
+              }}
+              data-testid={`checklist-item-${item.itemId}`}
+              data-checked={item.checked}
+            >
+              {/* Row */}
+              <div style={styles.checklistRow}>
+                <button
+                  onClick={() => toggleChecklistItem(item.itemId)}
+                  style={styles.checkboxBtn}
+                  aria-label={`Toggle ${item.label}`}
+                >
+                  <span style={{ fontSize: '22px', color: item.checked ? '#22c55e' : '#9aa0b4' }}>
+                    {item.checked ? '✅' : '⬜'}
+                  </span>
+                </button>
+                <span style={{
+                  ...styles.itemLabel,
+                  flex: 1,
+                  color: item.checked ? '#22c55e' : '#fff',
+                  textDecoration: item.checked ? 'line-through' : 'none',
+                }}>
+                  {item.label}
+                </span>
+                {relatedRenters.length > 0 && (
+                  <button
+                    onClick={() => setExpandedItem(isExpanded ? null : item.itemId)}
+                    style={styles.expandBtn}
+                    aria-label="Show equipment details"
+                  >
+                    <span style={{ ...styles.chevron, transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>›</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdown */}
+              {isExpanded && relatedRenters.length > 0 && (
+                <div style={styles.dropdown}>
+                  {relatedRenters.map(renter => (
+                    <div key={renter.renterId} style={styles.dropdownRow}>
+                      <div style={styles.renterName}>{renter.name}</div>
+                      <div style={styles.equipDetails}>
+                        {item.category === 'ski' || item.category === 'snowboard' ? (
+                          <>
+                            <span style={styles.equipType}>{renter.skiModel || SKI_MODELS[renter.packageId] || renter.packageName}</span>
+                            <span style={styles.invNum}>#{renter.inventoryNumber || '—'}</span>
+                          </>
+                        ) : item.category === 'boot' ? (
+                          <>
+                            <span style={styles.equipType}>Size {renter.bootSize || renter.selectedBootSize || '—'}</span>
+                            <span style={styles.invNum}>#{renter.inventoryNumber || '—'}</span>
+                          </>
+                        ) : item.category === 'pole' ? (
+                          <>
+                            <span style={styles.equipType}>{renter.poleLength || '—'}</span>
+                            <span style={styles.invNum}>#{renter.inventoryNumber || '—'}</span>
+                          </>
+                        ) : item.category === 'helmet' ? (
+                          <>
+                            <span style={styles.equipType}>
+                              Size {(renter.addOns || []).find(a => a.addOnId === 'helmet')?.size || '—'}
+                            </span>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       <BottomNav />
@@ -171,26 +251,86 @@ const styles = {
     minHeight: '80px',
     resize: 'vertical',
   },
-  checklistItem: {
-    width: '100%',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '14px 16px',
+  checklistCard: {
     borderRadius: '10px',
     border: '1px solid',
     marginBottom: '8px',
-    cursor: 'pointer',
-    minHeight: '56px',
-    textAlign: 'left',
+    overflow: 'hidden',
     transition: 'all 0.15s',
   },
-  checkbox: {
-    fontSize: '22px',
+  checklistRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 12px 10px 8px',
+    minHeight: '56px',
+  },
+  checkboxBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '4px',
+    minHeight: '48px',
+    minWidth: '40px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
   },
   itemLabel: {
     fontSize: '16px',
     fontWeight: '600',
+  },
+  expandBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '4px',
+    minHeight: '48px',
+    minWidth: '40px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  chevron: {
+    fontSize: '24px',
+    color: '#9aa0b4',
+    transition: 'transform 0.2s',
+    display: 'inline-block',
+  },
+  dropdown: {
+    borderTop: '1px solid #3a4055',
+    padding: '8px 0 4px',
+  },
+  dropdownRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '8px 16px',
+    borderBottom: '1px solid #2e3448',
+  },
+  renterName: {
+    fontSize: '14px',
+    fontWeight: '700',
+    color: '#fff',
+    flex: 1,
+  },
+  equipDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: '2px',
+  },
+  equipType: {
+    fontSize: '13px',
+    color: '#9aa0b4',
+    fontWeight: '600',
+  },
+  invNum: {
+    fontSize: '13px',
+    color: '#FFD700',
+    fontWeight: '700',
+    letterSpacing: '1px',
   },
 }

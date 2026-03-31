@@ -5,6 +5,22 @@ import EquipmentInfoModal from './EquipmentInfoModal'
 import { shoeToMondo } from '../../utils/mondoSizing'
 import { calculateDIN, recommendedPoleLength } from '../../utils/dinCalculator'
 
+const SKI_MODELS = {
+  'basic-ski': 'Rossignol Experience 76',
+  'signature-ski': 'Rossignol Experience 78 CA',
+  'performance-ski': 'Head Supershape i.Speed',
+  'basic-snowboard': 'Burton Clash',
+  'signature-snowboard': 'Burton Custom Flying V',
+}
+
+function recommendedSkiLength(heightFt, heightIn, ability, isSnowboard) {
+  const heightCm = (heightFt * 12 + heightIn) * 2.54
+  if (isSnowboard) return Math.round(heightCm * 0.88)
+  const offsets = { beginner: -20, intermediate: -10, advanced: 0, expert: 5 }
+  const offset = offsets[ability?.toLowerCase()] ?? -10
+  return Math.round(heightCm + offset)
+}
+
 export default function RenterCard({ renter, onUpdate }) {
   const [expanded, setExpanded] = useState(false)
   const [waiverOpen, setWaiverOpen] = useState(false)
@@ -19,6 +35,8 @@ export default function RenterCard({ renter, onUpdate }) {
     renter.ability || 'intermediate'
   )
   const isSnowboard = renter.packageId?.includes('snowboard')
+  const skiModel = SKI_MODELS[renter.packageId] || renter.packageName
+  const skiLength = recommendedSkiLength(renter.heightFt || 5, renter.heightIn || 8, renter.ability || 'intermediate', isSnowboard)
 
   function handleSignWaiver() {
     onUpdate(renter.renterId, {
@@ -80,9 +98,21 @@ export default function RenterCard({ renter, onUpdate }) {
             </div>
           </div>
 
+          {/* Ski / board model + length */}
+          <div style={styles.specBlock}>
+            <div style={styles.specRow}>
+              <span style={styles.specLabel}>{isSnowboard ? 'Board' : 'Ski'}</span>
+              <span style={styles.specValue}>{skiModel}</span>
+            </div>
+            <div style={styles.specRow}>
+              <span style={styles.specLabel}>{isSnowboard ? 'Board Length' : 'Ski Length'}</span>
+              <span style={styles.specValue}>{skiLength}cm</span>
+            </div>
+          </div>
+
           {/* Calculated boot size */}
           <div style={styles.bootSizeRow}>
-            <span style={styles.bootSizeLabel}>Boot Size (Mondo)</span>
+            <span style={styles.bootSizeLabel}>Boot Size</span>
             <span style={styles.bootSizeValue}>{bootSizes[0]}</span>
           </div>
 
@@ -104,12 +134,16 @@ export default function RenterCard({ renter, onUpdate }) {
           {isSnowboard ? (
             <div style={styles.specRow}>
               <span style={styles.specLabel}>Bindings DIN</span>
-              <span style={styles.specValue}>{din.min}–{din.max}</span>
+              <span style={styles.specValue}>
+                {renter.selectedBootSize ? `${din.min}–${din.max}` : '—'}
+              </span>
             </div>
           ) : (
             <div style={styles.specRow}>
               <span style={styles.specLabel}>Binding DIN</span>
-              <span style={styles.specValue}>{din.recommended.toFixed(1)} (rec)</span>
+              <span style={styles.specValue}>
+                {renter.selectedBootSize ? `${din.recommended.toFixed(1)} (rec)` : '—'}
+              </span>
             </div>
           )}
 
@@ -244,6 +278,12 @@ const styles = {
     padding: '0',
     flexShrink: 0,
   },
+  specBlock: {
+    marginTop: '14px',
+    borderTop: '1px solid #2e3448',
+    borderBottom: '1px solid #2e3448',
+    paddingBottom: '4px',
+  },
   specRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -270,6 +310,7 @@ const styles = {
     backgroundColor: '#2e3448',
     borderRadius: '8px',
     padding: '10px 14px',
+    marginTop: '14px',
     marginBottom: '4px',
   },
   bootSizeLabel: {

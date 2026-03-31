@@ -57,6 +57,7 @@ export default function PayBillPage() {
       pickupNote: pickupLocation === 'Other' ? pickupNote : pickupLocation,
     })
     setShowPickupNotes(false)
+    navigate('/home')
   }
 
   // Pickup Notes overlay

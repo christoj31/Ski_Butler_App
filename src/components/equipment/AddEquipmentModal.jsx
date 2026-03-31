@@ -2,20 +2,29 @@ import { useState } from 'react'
 import Modal from '../common/Modal'
 import { ADD_ONS } from '../../data/mockEquipment'
 
-export default function AddEquipmentModal({ isOpen, onClose, reservation, onConfirm }) {
+export default function AddEquipmentModal({ isOpen, onClose, reservation, onConfirm, onRemove }) {
   const [step, setStep] = useState(1)
   const [selectedRenterId, setSelectedRenterId] = useState(null)
+  const [mode, setMode] = useState(null) // 'add' | 'remove'
   const [selectedAddOns, setSelectedAddOns] = useState({})
+  const [selectedToRemove, setSelectedToRemove] = useState(new Set())
 
   function reset() {
     setStep(1)
     setSelectedRenterId(null)
+    setMode(null)
     setSelectedAddOns({})
+    setSelectedToRemove(new Set())
   }
 
   function handleClose() {
     reset()
     onClose()
+  }
+
+  function chooseMode(m) {
+    setMode(m)
+    setStep(3)
   }
 
   function toggleAddOn(addOnId) {
@@ -36,6 +45,14 @@ export default function AddEquipmentModal({ isOpen, onClose, reservation, onConf
     }))
   }
 
+  function toggleRemove(addOnId) {
+    setSelectedToRemove(prev => {
+      const next = new Set(prev)
+      next.has(addOnId) ? next.delete(addOnId) : next.add(addOnId)
+      return next
+    })
+  }
+
   function computeAddedCost() {
     return Object.keys(selectedAddOns).reduce((sum, id) => {
       const addOn = ADD_ONS.find(a => a.addOnId === id)
@@ -43,28 +60,41 @@ export default function AddEquipmentModal({ isOpen, onClose, reservation, onConf
     }, 0)
   }
 
+  function computeRemovedCost() {
+    return [...selectedToRemove].reduce((sum, id) => {
+      const ao = currentAddOns.find(a => a.addOnId === id)
+      return sum + (ao?.pricePerDay || 0)
+    }, 0)
+  }
+
   function handleConfirm() {
     if (!selectedRenterId) return
-    const addOnsToAdd = Object.values(selectedAddOns).map(ao => {
-      const addOn = ADD_ONS.find(a => a.addOnId === ao.addOnId)
-      return { ...ao, pricePerDay: addOn?.pricePerDay || 0 }
-    })
-    onConfirm(selectedRenterId, addOnsToAdd)
+    if (mode === 'add') {
+      const addOnsToAdd = Object.values(selectedAddOns).map(ao => {
+        const addOn = ADD_ONS.find(a => a.addOnId === ao.addOnId)
+        return { ...ao, pricePerDay: addOn?.pricePerDay || 0 }
+      })
+      onConfirm(selectedRenterId, addOnsToAdd)
+    } else {
+      onRemove?.(selectedRenterId, [...selectedToRemove])
+    }
     handleClose()
   }
 
   if (!reservation) return null
 
   const selectedRenter = reservation.renters.find(r => r.renterId === selectedRenterId)
+  const currentAddOns = selectedRenter?.addOns || []
+  const totalSteps = 4
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Add / Remove Equipment">
-      {/* Step indicator */}
+      {/* Step dots */}
       <div style={styles.stepRow}>
-        {[1, 2, 3].map(n => (
-          <div key={n} style={{
+        {Array.from({ length: totalSteps }).map((_, i) => (
+          <div key={i} style={{
             ...styles.stepDot,
-            backgroundColor: step >= n ? '#FFD700' : '#3a4055',
+            backgroundColor: step > i ? '#FFD700' : '#3a4055',
           }} />
         ))}
       </div>
@@ -89,9 +119,46 @@ export default function AddEquipmentModal({ isOpen, onClose, reservation, onConf
         </div>
       )}
 
-      {/* Step 2: Add-ons */}
+      {/* Step 2: Add or Remove */}
       {step === 2 && (
         <div data-testid="add-equipment-step-2">
+          <p style={styles.stepLabel}>What would you like to do for <strong>{selectedRenter?.name}</strong>?</p>
+          <div style={styles.modeRow}>
+            <button
+              onClick={() => chooseMode('add')}
+              style={styles.modeBtn}
+              data-testid="mode-add"
+            >
+              <span style={styles.modeIcon}>➕</span>
+              <span style={styles.modeName}>Add Gear</span>
+              <span style={styles.modeDesc}>Add a helmet, goggles, or upgrade</span>
+            </button>
+            <button
+              onClick={() => chooseMode('remove')}
+              style={{
+                ...styles.modeBtn,
+                opacity: currentAddOns.length === 0 ? 0.4 : 1,
+                cursor: currentAddOns.length === 0 ? 'not-allowed' : 'pointer',
+              }}
+              disabled={currentAddOns.length === 0}
+              data-testid="mode-remove"
+            >
+              <span style={styles.modeIcon}>➖</span>
+              <span style={styles.modeName}>Remove Gear</span>
+              <span style={styles.modeDesc}>
+                {currentAddOns.length === 0 ? 'No extra gear on this order' : `${currentAddOns.length} item${currentAddOns.length !== 1 ? 's' : ''} on order`}
+              </span>
+            </button>
+          </div>
+          <button className="btn btn-secondary" onClick={() => setStep(1)} style={{ marginTop: '16px', width: '100%' }}>
+            Back
+          </button>
+        </div>
+      )}
+
+      {/* Step 3a: Add equipment */}
+      {step === 3 && mode === 'add' && (
+        <div data-testid="add-equipment-step-3-add">
           <p style={styles.stepLabel}>Add equipment for <strong>{selectedRenter?.name}</strong></p>
           {ADD_ONS.map(addOn => {
             const checked = !!selectedAddOns[addOn.addOnId]
@@ -114,8 +181,6 @@ export default function AddEquipmentModal({ isOpen, onClose, reservation, onConf
                     </div>
                   </div>
                 </button>
-
-                {/* Helmet size selector */}
                 {addOn.addOnId === 'helmet' && checked && (
                   <div style={styles.sizeRow} data-testid="helmet-size-selector">
                     {addOn.sizes.map(size => (
@@ -137,48 +202,109 @@ export default function AddEquipmentModal({ isOpen, onClose, reservation, onConf
               </div>
             )
           })}
-
           <div style={styles.stepActions}>
-            <button className="btn btn-secondary" onClick={() => setStep(1)} style={{ flex: 0, minWidth: '80px' }}>
-              Back
-            </button>
-            <button className="btn btn-primary" onClick={() => setStep(3)} style={{ flex: 1 }}>
+            <button className="btn btn-secondary" onClick={() => setStep(2)} style={{ flex: 0, minWidth: '80px' }}>Back</button>
+            <button className="btn btn-primary" onClick={() => setStep(4)} style={{ flex: 1 }}>Next</button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3b: Remove equipment */}
+      {step === 3 && mode === 'remove' && (
+        <div data-testid="add-equipment-step-3-remove">
+          <p style={styles.stepLabel}>Select gear to remove for <strong>{selectedRenter?.name}</strong></p>
+          {currentAddOns.map(ao => {
+            const addOnMeta = ADD_ONS.find(a => a.addOnId === ao.addOnId)
+            const checked = selectedToRemove.has(ao.addOnId)
+            return (
+              <button
+                key={ao.addOnId}
+                onClick={() => toggleRemove(ao.addOnId)}
+                data-testid={`remove-toggle-${ao.addOnId}`}
+                style={{
+                  ...styles.addOnBtn,
+                  width: '100%',
+                  marginBottom: '10px',
+                  backgroundColor: checked ? '#2e1a1a' : '#242938',
+                  border: checked ? '2px solid #ef4444' : '1px solid #3a4055',
+                }}
+              >
+                <div style={styles.addOnLeft}>
+                  <div style={{ ...styles.addOnCheck, color: checked ? '#ef4444' : '#9aa0b4' }}>
+                    {checked ? '✕' : '○'}
+                  </div>
+                  <div>
+                    <div style={styles.addOnName}>
+                      {addOnMeta?.name || ao.addOnId}{ao.size ? ` — Size ${ao.size}` : ''}
+                    </div>
+                    <div style={styles.addOnPrice}>${ao.pricePerDay}/day</div>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+          <div style={styles.stepActions}>
+            <button className="btn btn-secondary" onClick={() => setStep(2)} style={{ flex: 0, minWidth: '80px' }}>Back</button>
+            <button
+              className="btn btn-primary"
+              onClick={() => setStep(4)}
+              disabled={selectedToRemove.size === 0}
+              style={{ flex: 1, opacity: selectedToRemove.size === 0 ? 0.4 : 1 }}
+            >
               Next
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 3: Confirm */}
-      {step === 3 && (
-        <div data-testid="add-equipment-step-3">
+      {/* Step 4: Confirm */}
+      {step === 4 && (
+        <div data-testid="add-equipment-step-4">
           <p style={styles.stepLabel}>Confirm changes for <strong>{selectedRenter?.name}</strong></p>
 
-          {Object.keys(selectedAddOns).length === 0 ? (
-            <p style={{ color: '#9aa0b4' }}>No add-ons selected.</p>
-          ) : (
-            Object.values(selectedAddOns).map(ao => {
-              const addOn = ADD_ONS.find(a => a.addOnId === ao.addOnId)
-              return (
-                <div key={ao.addOnId} style={styles.summaryRow}>
-                  <span style={{ color: '#fff' }}>
-                    {addOn?.name}{ao.size ? ` (${ao.size})` : ''}
-                  </span>
-                  <span style={{ color: '#FFD700' }}>+${addOn?.pricePerDay}/day</span>
-                </div>
-              )
-            })
+          {mode === 'add' && (
+            <>
+              {Object.keys(selectedAddOns).length === 0 ? (
+                <p style={{ color: '#9aa0b4' }}>No add-ons selected.</p>
+              ) : (
+                Object.values(selectedAddOns).map(ao => {
+                  const addOn = ADD_ONS.find(a => a.addOnId === ao.addOnId)
+                  return (
+                    <div key={ao.addOnId} style={styles.summaryRow}>
+                      <span style={{ color: '#fff' }}>{addOn?.name}{ao.size ? ` (${ao.size})` : ''}</span>
+                      <span style={{ color: '#22c55e' }}>+${addOn?.pricePerDay}/day</span>
+                    </div>
+                  )
+                })
+              )}
+              <div style={styles.totalRow}>
+                <span style={styles.totalLabel}>Added cost</span>
+                <span style={{ ...styles.totalValue, color: '#22c55e' }}>+${computeAddedCost()}/day</span>
+              </div>
+            </>
           )}
 
-          <div style={styles.totalRow}>
-            <span style={styles.totalLabel}>Added cost</span>
-            <span style={styles.totalValue}>+${computeAddedCost()}/day</span>
-          </div>
+          {mode === 'remove' && (
+            <>
+              {[...selectedToRemove].map(id => {
+                const ao = currentAddOns.find(a => a.addOnId === id)
+                const addOnMeta = ADD_ONS.find(a => a.addOnId === id)
+                return (
+                  <div key={id} style={styles.summaryRow}>
+                    <span style={{ color: '#fff' }}>{addOnMeta?.name || id}{ao?.size ? ` (${ao.size})` : ''}</span>
+                    <span style={{ color: '#ef4444' }}>−${ao?.pricePerDay}/day</span>
+                  </div>
+                )
+              })}
+              <div style={styles.totalRow}>
+                <span style={styles.totalLabel}>Removed cost</span>
+                <span style={{ ...styles.totalValue, color: '#ef4444' }}>−${computeRemovedCost()}/day</span>
+              </div>
+            </>
+          )}
 
           <div style={styles.stepActions}>
-            <button className="btn btn-secondary" onClick={() => setStep(2)} style={{ flex: 0, minWidth: '80px' }}>
-              Back
-            </button>
+            <button className="btn btn-secondary" onClick={() => setStep(3)} style={{ flex: 0, minWidth: '80px' }}>Back</button>
             <button
               className="btn btn-primary"
               onClick={handleConfirm}
@@ -223,6 +349,36 @@ const styles = {
     minHeight: '56px',
     cursor: 'pointer',
     textAlign: 'left',
+  },
+  modeRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  modeBtn: {
+    width: '100%',
+    backgroundColor: '#242938',
+    border: '1px solid #3a4055',
+    borderRadius: '12px',
+    padding: '18px 16px',
+    minHeight: '80px',
+    textAlign: 'left',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    cursor: 'pointer',
+  },
+  modeIcon: {
+    fontSize: '22px',
+  },
+  modeName: {
+    fontSize: '17px',
+    fontWeight: '800',
+    color: '#fff',
+  },
+  modeDesc: {
+    fontSize: '13px',
+    color: '#9aa0b4',
   },
   addOnItem: {
     marginBottom: '10px',
@@ -296,6 +452,5 @@ const styles = {
   totalValue: {
     fontSize: '20px',
     fontWeight: '900',
-    color: '#FFD700',
   },
 }
