@@ -24,7 +24,7 @@ export default function App() {
     <AuthProvider>
       <ReservationProvider initialReservations={ALL_RESERVATIONS}>
         <PackingProvider initialPackItems={MOCK_PACK_ITEMS}>
-          <BrowserRouter>
+          <BrowserRouter basename="/Ski_Butler_App/">
             <Routes>
               <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/login" element={<LoginPage />} />
