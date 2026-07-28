@@ -1,16 +1,23 @@
 # Ski_Butler_App
 
 **Build Phases**
+
   **Phase 1** - Setup & Login
   
   **Phase 2** — Tech Home & Nav
   
   **Phase 3** — Delivery Detail
+  
   **Phase 4** — Equipment Modal & Pay Flow
+  
   **Phase 5** — Pickup Detail
+  
   **Phase 6** — Search
+  
   **Phase 7** — Packing
+  
   **Phase 8** — Create Reservation
+  
   **Final Integration Test**
 
 
